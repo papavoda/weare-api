@@ -1,0 +1,38 @@
+version: '3.9'
+services:
+# django
+  api:
+    build: 
+      context: ./django
+      dockerfile: Dockerfile-PROD
+    image: weare-prod-240406
+    restart: unless-stopped
+    user: 1000:1000
+    ports:
+      - "8008:8000"
+    container_name: weare_prod_240406
+    env_file:
+      - ./django/.env.prod
+    volumes:
+      - ./django:/code
+      - ./django/cache:/code/cache:rw
+    depends_on:
+      - db
+
+# postgres
+  db:
+   build: ./db
+   image: weare-db-prod-240406
+   container_name: weare_db_prod_240406
+   restart: unless-stopped
+   volumes:
+     - weare_pg_data_240406:/var/lib/postgresql/data/
+   env_file:
+     - ./db/.db.env
+
+
+volumes:
+  weare_pg_data:
+#networks:
+#  djangonet:
+ 

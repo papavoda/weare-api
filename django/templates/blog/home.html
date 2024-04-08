@@ -1,0 +1,11 @@
+<h1>HOME</h1>
+<ul>
+{% for post in  free_latest_posts %}
+<li>    
+<h2>{{ post.title }}</h2>
+
+
+<img src="{{post.main_image.url}}-500.jpg"  alt="">
+</li>
+{% endfor %}
+</ul>

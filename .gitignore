@@ -1,0 +1,9 @@
+**/.idea
+*cache
+*.env*
+*.directory
+**/.venv
+**/static
+**/media
+**/__pycache__
+**/migrations

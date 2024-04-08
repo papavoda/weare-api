@@ -1,0 +1,33 @@
+
+
+<section class="ftco-section ftco-degree-bg">
+<div class="container">
+<div class="row">
+<form method="post"  enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="form-error">{{ form.non_field_errors }}</div>
+
+{#{% for f in form %}#}
+{#    <div class="col-lg-8 ftco-animate">#}
+{#<p><label class="form-label" for="{{ f.id_for_label }}"> {{f.label}}: </label>{{ f }}</p>#}
+{##}
+{#    <div class="form-error">{{ f.errors }}</div>#}
+{#    </div>#}
+{#{% endfor %}#}
+{#    {{ form.title.as_field_group }}#}
+{#    {{ form.photo_date.as_field_group }}#}
+    <hr><hr>
+    <div class="row">
+{#        <div class="col-md-4">#}
+{#            {{ form.title.as_field_group }}#}
+{##}
+{#        </div>#}
+    {{ form.as_div }}
+    </div>
+    <button type="submit">Отправить</button>
+
+</form>
+</div>
+</div>
+</section>

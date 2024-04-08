@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+FROM alpine:latest as builder
+WORKDIR /code
+RUN apk add --no-cache ffmpeg
+
+
+
+# Pull base image
+FROM python:3.12-alpine
+# Set environment variables
+ENV PIP_DISABLE_PIP_VERSION_CHECK 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# set work directory
+WORKDIR /code
+# copy ffmpeg libs
+COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
+COPY --from=builder /usr/lib/* /usr/lib/
+
+# Install dependencies
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+ENTRYPOINT ["sh", "entrypoint.sh"]
