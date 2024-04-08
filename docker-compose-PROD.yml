@@ -23,7 +23,7 @@ services:
   db:
    build: ./db
    image: weare-db-prod
-   container_name: weare_db_prod_240406
+   container_name: weare_db_prod
    restart: unless-stopped
    volumes:
      - weare_pg_data:/var/lib/postgresql/data/
