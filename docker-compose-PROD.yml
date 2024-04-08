@@ -5,12 +5,12 @@ services:
     build: 
       context: ./django
       dockerfile: Dockerfile-PROD
-    image: weare-prod-240406
+    image: weare-prod
     restart: unless-stopped
     user: 1000:1000
     ports:
       - "8008:8000"
-    container_name: weare_prod_240406
+    container_name: weare_prod
     env_file:
       - ./django/.env.prod
     volumes:
@@ -22,11 +22,11 @@ services:
 # postgres
   db:
    build: ./db
-   image: weare-db-prod-240406
+   image: weare-db-prod
    container_name: weare_db_prod_240406
    restart: unless-stopped
    volumes:
-     - weare_pg_data_240406:/var/lib/postgresql/data/
+     - weare_pg_data:/var/lib/postgresql/data/
    env_file:
      - ./db/.db.env
 
