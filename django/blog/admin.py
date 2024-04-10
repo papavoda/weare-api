@@ -21,7 +21,7 @@ class ImageAdmin(admin.ModelAdmin):
     list_display = ("name", "file", 'get_image')
 
     def get_image(self, obj):
-        return mark_safe(f'<img src={obj.image.url} width="110" height="80"')
+        return mark_safe(f'<img src={obj.file.url} width="110" height="80"')
 
     get_image.short_description = "Миниатюра"
 
@@ -34,7 +34,7 @@ class ImageInline(admin.StackedInline):
     readonly_fields = ("get_image",)
 
     def get_image(self, obj):
-        return mark_safe(f'<img src={obj.image.url} width="110" height="80">')
+        return mark_safe(f'<img src={obj.file.url} width="110" height="80">')
 
 
 @admin.register(Video)

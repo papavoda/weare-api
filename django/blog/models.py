@@ -130,18 +130,7 @@ class Stars(models.Model):
     stars = models.PositiveSmallIntegerField(_('Stars'), default=3, choices=STARS_CHOICES, blank=True, null=True)
     # TODO create field that computing average star rate. Everytime while def save
 
-    # def save(self, *args, **kwargs):
-    #     """
-    #     Create only one Stars instance
-    #     """
-    #     # if not self.pk and Stars.objects.filter(user=self.user, post=self.post).exists():
-    #     #     #
-    #     #     Stars.objects.filter(user=self.user, post=self.post).delete()
-    #     if Stars.objects.filter(user=self.user, post=self.post):
-    #         print(self.user, self.post)
-    #         Stars.objects.filter(user=self.user, post=self.post).delete()
-    #     else:
-    #         super().save(*args, **kwargs)
+
 
 
 # for Image upload
@@ -173,7 +162,6 @@ class Image(models.Model):
     def save(self, *args, **kwargs):
         # Start Get the exif data from the uploaded image
         self.exif_data = get_exif(self.file)
-
         super().save(*args, **kwargs)
 
         if self.file:
@@ -191,6 +179,7 @@ class Video(models.Model):
         ('--mid.jpg', 'mid'),
         ('--end.jpg', 'end'),
     )
+
     name = models.CharField(max_length=500, default='', blank=True, null=True)
     index_number = models.PositiveIntegerField(
         _('Порядковый номер'), default=0,  blank=True, null=True,)

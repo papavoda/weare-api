@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticatedOrReadOnly, I
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .permissions import IsAuthorOrReadOnly, IsPostAuthorOrAdminOrReadOnly
 from django.db.models import Avg
 
 from .paginations import SmallResultsSetPagination, StandardResultsSetPagination
@@ -118,7 +119,7 @@ class TagListViewSet(viewsets.ModelViewSet):
 
 class PostListViewSet(viewsets.ModelViewSet):
     # lookup_field = 'slug'
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = PostFilter
@@ -155,17 +156,8 @@ class PostListViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(obj)
         return Response(serializer.data)
 
-    # def retrieve(self, request, *args, **kwargs):
-    #     obj = self.get_object()
-    #     # Increment the views field using F expressions
-    #     obj.views = F('views') + 1
-    #     # Save the object with update_fields to perform the partial update
-    #     obj.save()
-    #     serializer = self.get_serializer(obj)
-    #     return Response(serializer.data)
-    #     # return super().retrieve(request, *args, **kwargs)
-
     def destroy(self, request, *args, **kwargs):
+        permission_classes = [IsAuthenticated, ]
         instance = self.get_object()
         if instance.author != request.user:
             raise PermissionDenied("You are not allowed to delete this post.")
@@ -211,7 +203,7 @@ class PostListViewSet(viewsets.ModelViewSet):
 
 # categories/<uuid:category_id>/posts
 class PostViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
     serializer_class = PostListSerializer
 
     def get_queryset(self):
@@ -230,71 +222,84 @@ class PostViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-# class CategoryDetail(APIView):
-#     def get(self, request, pk, format=None):
-#         posts = Post.objects.filter(category_id=pk, status="published")
-#         paginator = SmallResultsSetPagination()
-#         result_page = paginator.paginate_queryset(posts, request)
-#         serializer = PostListSerializer(result_page, many=True)
-#         response = Response(serializer.data)
-#         return response
-
-
-# @api_view(['GET'])
-# def cat_detail(request, pk):
-#     posts = Post.objects.filter(category_id=pk, status="published")
-#     serializer = PostListSerializer(posts, many=True)
-#     return JsonResponse(serializer.data, safe=False)
-#
-
-
+# TODO check if user, not author may delete media
 class ImageView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly, ]
 
-    def get(self, request, image_id):
+    def get(self, request, pk):
         try:
-            image = Image.objects.get(id=image_id)
+            image = Image.objects.get(pk=pk)
             serializer = ImageSerializer(image)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Image.DoesNotExist:
             return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    def patch(self, request, image_id):
+    def patch(self, request, pk):
+
         try:
-            image = Image.objects.get(id=image_id)
+            image = Image.objects.get(pk=pk)
+        except Image.DoesNotExist:
+            return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
+        if image.post.author_id == request.user.id or request.user.is_staff:
             serializer = ImageSerializer(image, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error': f'User {request.user} is not author of this media'}, status=status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, pk):
+        # check image exist
+        try:
+            image = Image.objects.get(pk=pk)
         except Image.DoesNotExist:
             return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    def delete(self, request, image_id):
-        try:
-            image = Image.objects.get(id=image_id)
+        # check if user author of post or admin
+        if image.post.author_id == request.user.id or request.user.is_staff:
             image.delete()
             return Response({'message': 'Image deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
-        except Image.DoesNotExist:
-            return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({'error': f'User {request.user} is not author of this media'}, status=status.HTTP_403_FORBIDDEN)
 
 
+    # def delete (self, request):
+    #     image_ids = request.data.get('image_ids', [])
+    #     if not image_ids:
+    #         return Response({"detail": "No image IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
+    #
+    #     deleted_count = 0
+    #     # for image_id in image_ids:
+    #     #     try:
+    #     #         image = Image.objects.get(pk=image_id)
+    #     #     except Image.DoesNotExist:
+    #     #         continue  # Skip if image doesn't exist
+    #     #
+    #     #     # Check if the user is authorized to delete the image
+    #     #     if not request.user.is_staff and image.post.author != request.user:
+    #     #         continue  # Skip if user is not authorized
+    #     #
+    #     #     image.delete()
+    #     #     deleted_count += 1
+    #
+    #     return Response({"detail": f"{deleted_count} images deleted successfully."},
+    #                     status=status.HTTP_204_NO_CONTENT)
 #
 class VideoView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly, ]
 
-    def get(self, request, image_id):
+    def get(self, request, pk):
         try:
-            video = Video.objects.get(id=image_id)
+            video = Video.objects.get(pk=pk)
             serializer = VideoSerializer(video)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Video.DoesNotExist:
             return Response({'error': 'Video not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    def patch(self, request, image_id):
+    def patch(self, request, pk):
 
         try:
-            video = Video.objects.get(id=image_id)
+            video = Video.objects.get(pk=pk)
             serializer = VideoSerializer(video, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -303,25 +308,20 @@ class VideoView(APIView):
         except Video.DoesNotExist:
             return Response({'error': 'Video not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    def delete(self, request, image_id):
-
+    def delete(self, request, pk):
+        # check image exist
         try:
-            video = Video.objects.get(id=image_id)
-
-            # Get the file path from the Image instance
-            file_path = video.file.path
-
-            video.delete()
-
-            # Check if the file exists and delete it from disk
-            if os.path.exists(file_path):
-                os.remove(file_path)
-
-            return Response({'message': 'Video deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+            video = Video.objects.get(pk=pk)
         except Video.DoesNotExist:
             return Response({'error': 'Video not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # check if user author of post or admin
+        if video.post.author_id == request.user.id or request.user.is_staff:
+            video.delete()
+            return Response({'message': 'Video deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({'error': f'User {request.user} is not author of this media'},
+                            status=status.HTTP_403_FORBIDDEN)
+
 
 
 """ New post creation """

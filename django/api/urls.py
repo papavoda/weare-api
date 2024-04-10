@@ -16,8 +16,8 @@ urlpatterns = [
     path('tag-create/<str:tag>/', tag_create, name='tag_create'),
     path('tags/<uuid:pk>/', include(router.urls)),
     path('categories/<uuid:pk>/', include(router.urls)),
-    path('images/<uuid:image_id>/', ImageView.as_view(), name='image-view'),
-    path('videos/<uuid:image_id>/', VideoView.as_view(), name='video-view'),
+    path('images/<uuid:pk>/', ImageView.as_view(), name='image-view'),
+    path('videos/<uuid:pk>/', VideoView.as_view(), name='video-view'),
 ]
 
 router = SimpleRouter()
