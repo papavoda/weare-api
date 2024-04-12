@@ -119,7 +119,7 @@ class TagListViewSet(viewsets.ModelViewSet):
 
 class PostListViewSet(viewsets.ModelViewSet):
     # lookup_field = 'slug'
-    permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
+    permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = PostFilter

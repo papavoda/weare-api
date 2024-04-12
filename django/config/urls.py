@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView, )
 from rest_framework_simplejwt.views import TokenVerifyView
 
-from accounts.views import activateemail
+
 
 urlpatterns = [
     path('api/', include('accounts.urls')),
@@ -27,7 +27,7 @@ urlpatterns = [
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
     # path('', include('blog.urls')),
-    path('activateemail/', activateemail, name='activateemail'),
+
 ]
 
 if settings.DEBUG:

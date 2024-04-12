@@ -28,7 +28,7 @@ class IsPostAuthorOrAdminOrReadOnly(permissions.BasePermission):
             return True
 
         # Check if the user is the author of the associated post
-        if obj.post.author == request.user:
+        if obj.author == request.user:
             return True
 
         # Check if the user is an admin

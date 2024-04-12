@@ -49,27 +49,30 @@ def signup(request):
         'password1': data.get('password1'),
         'password2': data.get('password2'),
     })
-
-    if form.is_valid():
-        user = form.save()
-        user.is_active = False
-        user.save()
-
-        url = f'{settings.WEBSITE_URL}/activateemail/?email={user.email}&id={user.id}'
-
-        send_mail(
-            "Please verify your email",
-            f"The url for activating your account is: {url}",
-            "papavoda@gmail.com",
-            [user.email],
-            fail_silently=False,
-        )
-
+    # Check if the email already exists
+    if CustomUser.objects.filter(email=data.get('email')).exists():
+        return JsonResponse({'message': 'Email already exists'}, status=400)
     else:
-        message = form.errors.as_json()
-        # print(message)
-    return JsonResponse({'message': message})
+        if form.is_valid():
+            user = form.save()
+            user.is_active = False
+            user.save()
 
+            # TODO Change to front url
+            url = f'{settings.WEBSITE_URL}/api/activateemail/?email={user.email}&id={user.id}'
+
+            send_mail(
+                "Please verify your email",
+                f"The url for activating your account is: {url}",
+                "papavoda@gmail.com",
+                [user.email],
+                fail_silently=False,
+            )
+            return JsonResponse({'message': message}, status=201)
+        else:
+            message = form.errors.as_json()
+            # print(message)
+            return JsonResponse({'message': message}, status=400)
 
 @api_view(['POST'])
 def toggle_simple_gallery(request, user_id):
