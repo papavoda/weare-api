@@ -16,10 +16,6 @@ urlpatterns = [
     path('guliguli/', admin.site.urls),
 
     path('api/v1/', include('api.urls')),
-    # path("api-auth/", include("rest_framework.urls")), # add auth
-    path("api/v1/dj-rest-auth/", include("dj_rest_auth.urls")),
-    path("api/v1/dj-rest-auth/registration/",
-         include("dj_rest_auth.registration.urls")),  # add registration
 
     # Simple JWT
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -34,9 +30,9 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # FOR debug_toolbar
-if settings.DEBUG:
-    import debug_toolbar
-
-    urlpatterns = [
-                      path('__debug__/', include(debug_toolbar.urls)),
-                  ] + urlpatterns
+# if settings.DEBUG:
+#     import debug_toolbar
+#
+#     urlpatterns = [
+#                       path('__debug__/', include(debug_toolbar.urls)),
+#                   ] + urlpatterns

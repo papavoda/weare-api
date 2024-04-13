@@ -57,30 +57,30 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',  # auth
+    # 'django.contrib.sites',  # auth
 
     'treebeard',  # directories tree
     'corsheaders',
 
     'rest_framework',
     # https://django-rest-framework-simplejwt.readthedocs.io/en/latest/getting_started.html
-   # 'rest_framework_simplejwt', #  Simple JWT
+    'rest_framework_simplejwt', #  Simple JWT
 
     # https://dj-rest-auth.readthedocs.io/en/latest/installation.html#json-web-token-jwt-support-optional
-    "rest_framework.authtoken",
-    'dj_rest_auth',
+    # "rest_framework.authtoken",
+    # 'dj_rest_auth',
 
-    'allauth',  # auth
-    'allauth.account',  # auth
-    'allauth.socialaccount',  # auth
+    # 'allauth',  # auth
+    # 'allauth.account',  # auth
+    # 'allauth.socialaccount',  # auth
 
-    'dj_rest_auth.registration',
+    # 'dj_rest_auth.registration',
 
     'django_filters',  # for searching
     # 'django_advance_thumbnail', # for photo thumbnails
 
     # 'django_cleanup',
-    'debug_toolbar',
+    # 'debug_toolbar',
 
     # Local
     "accounts.apps.AccountsConfig",
@@ -99,10 +99,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',  # add
+    # 'allauth.account.middleware.AccountMiddleware',  # add
 # for debug-toolbar
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'django.contrib.sites.middleware.CurrentSiteMiddleware',
+#     'debug_toolbar.middleware.DebugToolbarMiddleware',
+#     'django.contrib.sites.middleware.CurrentSiteMiddleware',
 
 ]
 # AUTHENTICATION_BACKENDS = [
@@ -204,20 +204,17 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [  # new
-       # 'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # "rest_framework.authentication.SessionAuthentication",
-        # "rest_framework.authentication.TokenAuthentication",
     ],
     "DATETIME_FORMAT": "%d.%m.%Y",
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 6,
 
     # For return only JSON
-    # 'DEFAULT_RENDERER_CLASSES': [
-    #     'rest_framework.renderers.JSONRenderer',
-    # ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
     # 'DEFAULT_PARSER_CLASSES': (
     #     'rest_framework.parsers.JSONParser',
     #     'rest_framework.parsers.FormParser',
