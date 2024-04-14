@@ -1,4 +1,6 @@
-from django.http import HttpResponse
+from django.contrib.auth.forms import PasswordChangeForm
+from django.http import HttpResponse, JsonResponse
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from .models import CustomUser
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
@@ -7,8 +9,25 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from .serializers import PasswordResetSerializer, PasswordResetConfirmSerializer
+from .serializers import PasswordResetSerializer, PasswordResetConfirmSerializer, UserSerializer, CustomUserSerializer
 
+
+
+
+
+@api_view(['POST'])
+
+def editpassword(request):
+    user = request.user
+
+    form = PasswordChangeForm(data=request.POST, user=user)
+
+    if form.is_valid():
+        form.save()
+
+        return JsonResponse({'message': 'success'})
+    else:
+        return JsonResponse({'message': form.errors.as_json()}, safe=False)
 
 class PasswordResetView(GenericAPIView):
     permission_classes = []
@@ -50,16 +69,20 @@ class PasswordResetConfirmView(GenericAPIView):
 
 
 
-
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def activateemail(request):
-    email = request.GET.get('email', '')
-    id = request.GET.get('id', '')
+    # Extract data from the POST request
+    uid = request.data['uid']
+    email = request.data['email']
 
-    if email and id:
-        user = CustomUser.objects.get(id=id, email=email)
+    if email and uid:
+        user = CustomUser.objects.get(id=uid, email=email)
         user.is_active = True
         user.save()
 
-        return HttpResponse('The user is now activated. You can go ahead and log in!')
+        return Response('The user is now activated. You can go ahead and log in!')
     else:
-        return HttpResponse('The parameters is not valid!')
+        return Response('The parameters is not valid!')
+

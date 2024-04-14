@@ -1,19 +1,12 @@
 import uuid
 
+from PIL import Image
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AbstractUser, PermissionsMixin, UserManager
 from django.db import models
 from django.utils import timezone
 
-# Worked model
-# class CustomUser(AbstractUser):
-#     id = models.UUIDField(  # new
-#         primary_key=True,
-#         default=uuid.uuid4,
-#         editable=False,
-#     )
-#     name = models.CharField(null=True, blank=True, max_length=100)
-
+from blog.services.validators import validate_image_extension
 
 class CustomUserManager(UserManager):
     def _create_user(self, name, email, password, **extra_fields):
@@ -46,7 +39,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=100, blank=True, default='')
     name = models.CharField(max_length=100, blank=True, default='')
-    avatar = models.ImageField(upload_to='avatars', blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/%Y', validators=[validate_image_extension], blank=True, null=True)
     is_simple_gallery = models.BooleanField(default=False)
 
     is_active = models.BooleanField(default=False)
@@ -62,3 +55,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     EMAIL_FIELD = 'email'
     REQUIRED_FIELDS = []
 
+    def save(self, *args, **kwargs):
+        # Call the original save method
+        super().save(*args, **kwargs)
+
+        # Resize the avatar image
+        if self.avatar:
+            img = Image.open(self.avatar.path)
+            if img.height > 200 or img.width > 200:
+                output_size = (300, 300)
+                img.thumbnail(output_size)
+                img.save(self.avatar.path)

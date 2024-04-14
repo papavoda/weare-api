@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.contrib.auth.tokens import default_token_generator
 from datetime import timedelta
 from django.utils.encoding import force_str
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -21,19 +22,26 @@ from .serializers import CustomUserSerializer
 
 
 #  Return user data
-@api_view(['GET'])
-def me(request):
-    # posts = Post.objects.filter(author_id=request.user.id)
-    # serializer = PostSerializer(posts, many=True)
-    return JsonResponse({
-        'id': request.user.id,
-        'name': request.user.name,
-        'email': request.user.email,
-        'is_superuser': request.user.is_superuser,
-        'isSimpleGallery': request.user.is_simple_gallery,
-        # 'posts': serializer.data
-    })
+# @api_view(['GET'])
+# def me(request):
+#     user = request.user
+#     serializer = CustomUserSerializer(user)
+#     return Response(serializer.data, status=status.HTTP_200_OK)
 
+class MeAPI(APIView):
+    permission_classes = [IsAuthenticated, ]
+    def get(self, request):
+        user = request.user
+        serializer = CustomUserSerializer(user, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, *args, **kwargs):
+        user = request.user  # Assuming user is authenticated
+        serializer = CustomUserSerializer(user, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #  Register
 @api_view(['POST'])
@@ -59,7 +67,8 @@ def signup(request):
             user.save()
 
             # TODO Change to front url
-            url = f'{settings.WEBSITE_URL}/api/activateemail/?email={user.email}&id={user.id}'
+            # url = f'{settings.WEBSITE_URL}/api/v1/users/activateemail/?email={user.email}&id={user.id}'
+            url = f'http://localhost:5173/activateemail/{user.email}/{user.id}'
 
             send_mail(
                 "Please verify your email",
@@ -74,9 +83,9 @@ def signup(request):
             # print(message)
             return JsonResponse({'message': message}, status=400)
 
-@api_view(['POST'])
-def toggle_simple_gallery(request, user_id):
 
+@api_view(['POST'])
+def toggle_simple_gallery(request,):
     user = request.user
     isSimpleGallery = request.GET.get('is-simple-gallery', '')
     if isSimpleGallery == 'true':
@@ -85,30 +94,7 @@ def toggle_simple_gallery(request, user_id):
         user.is_simple_gallery = False
     user.save()
 
-    return JsonResponse({'isSimpleGallery': user.is_simple_gallery })
-
-
-# views.py
-
-# Test from chatgpt
-class UserRegistrationView(APIView):
-    def post(self, request):
-        serializer = CustomUserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            # Send verification email
-            self.send_verification_email(request, user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def send_verification_email(self, request, user):
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        verification_url = reverse('verify-email', kwargs={'uidb64': uid, 'token': token})
-        verification_url = request.build_absolute_uri(verification_url)
-        subject = 'Verify your email'
-        message = f'Please click the link below to verify your email:\n{verification_url}'
-        send_mail(subject, message, 'papavoda@gmail.com', [user.email])
+    return JsonResponse({'isSimpleGallery': user.is_simple_gallery})
 
 
 class EmailVerificationView(APIView):

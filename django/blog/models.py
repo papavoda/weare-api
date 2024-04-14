@@ -12,23 +12,7 @@ from config import settings
 from blog.services.utils import resize_image, get_exif, create_video_thumbs
 from accounts.models import CustomUser
 
-
-def validate_file_extension(value):
-    """
-    Validator to check if the uploaded file has a valid extension.
-    """
-    valid_extensions = ['.jpg', '.jpeg', '.png', '.gif']
-
-    # Get the file name and extension
-    file_name = value.name
-    extension = file_name.split('.')[-1].lower()
-
-    # Check if the extension is valid
-    if not any(extension in ext for ext in valid_extensions):
-        raise ValidationError(
-            _('Unsupported file extension. Please upload a valid file.'),
-            code='invalid_file_extension'
-        )
+from blog.services.validators import validate_image_extension, validate_video_extension
 
 
 # Категории.
@@ -84,7 +68,7 @@ class Post(models.Model):
                                  )
 
     title = models.CharField(max_length=500)
-    main_image = models.ImageField(upload_to=upload_directory_path, verbose_name='Главное изображение',)
+    main_image = models.ImageField(upload_to=upload_directory_path, validators=[validate_image_extension], verbose_name='Главное изображение',)
     text = models.TextField(max_length=8000, null=True, blank=True, verbose_name='Основной текст', )
     tags = models.ManyToManyField(Tag, verbose_name='Метки', related_name="post", blank=True)
     photo_date = models.DateField(auto_now=False, auto_now_add=False, verbose_name='Дата фотосъемки', )
@@ -145,12 +129,12 @@ def video_directory(instance, filename):
 # Фото
 class Image(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    index_number = models.PositiveIntegerField(_('Порядковый номер'), default=0, blank=True, null=True)
+    index_number = models.SmallIntegerField(_('Порядковый номер'), default=0, blank=True, null=True)
     name = models.CharField(max_length=250, null=True, blank=True)  # alt
     post = models.ForeignKey(Post, related_name='images', on_delete=models.CASCADE)
     file = models.ImageField(upload_to=image_directory, max_length=250)
     description = models.CharField(max_length=500, blank=True, null=True)
-    validators = [validate_file_extension]
+    validators = [validate_image_extension]
     exif_data = models.JSONField(null=True, blank=True, default=dict, )
 
     def __str__(self):
@@ -184,7 +168,7 @@ class Video(models.Model):
     index_number = models.PositiveIntegerField(
         _('Порядковый номер'), default=0,  blank=True, null=True,)
     post = models.ForeignKey(Post, related_name='videos', on_delete=models.CASCADE, null=True)
-    file = models.FileField(upload_to=video_directory)
+    file = models.FileField(upload_to=video_directory, validators=[validate_video_extension])
     thumbnail = models.ImageField(upload_to=video_directory, blank=True, null=True)
     description = models.CharField(max_length=500, blank=True, null=True)
     validators = [FileExtensionValidator(allowed_extensions=['MOV', 'avi', 'mp4', 'webm', 'mkv'])]
