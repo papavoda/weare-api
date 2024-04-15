@@ -1,6 +1,6 @@
 import uuid
 
-from PIL import Image
+from PIL import Image, ImageOps
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AbstractUser, PermissionsMixin, UserManager
 from django.db import models
@@ -62,7 +62,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         # Resize the avatar image
         if self.avatar:
             img = Image.open(self.avatar.path)
+            # convert to RGB
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+
             if img.height > 200 or img.width > 200:
                 output_size = (300, 300)
                 img.thumbnail(output_size)
-                img.save(self.avatar.path)
+                # Rotate according exif information
+                img = ImageOps.exif_transpose(img)
+
+                img.save(self.avatar.path, format='JPEG', quality=85, optimize=True, progressive=True)
