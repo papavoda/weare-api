@@ -1,15 +1,10 @@
 import os
 import shutil
-from django.db.models import F
 from django.http import JsonResponse
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_cookie, vary_on_headers
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser, IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -48,20 +43,27 @@ def my_posts(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-class MyPosts(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, ]
+# home
+class LastNews(APIView):
+    permission_classes = []
     pagination_class = StandardResultsSetPagination
-    serializer_class = PostDetailSerializer
+    serializer_class = PostListSerializer
 
-    def get_queryset(self):
-        user = self.request.user
-        posts = Post.objects.select_related('category',
-                                            'author').filter(author_id=user)
-        # posts = Post.objects.select_related('category',
-        #                                     'author').filter(author_id=user)
+    def get(self, request):
+        try:
+            posts = Post.objects.select_related('category',
+                                               'author', ).filter(status='published').order_by('-created')
+            # Paginate the queryset
+            paginator = self.pagination_class()
+            paginated_posts = paginator.paginate_queryset(posts, request)
 
-        return posts
+            # Serialize the paginated queryset with serializer_class = PostListSerializer
+            serializer = self.serializer_class(paginated_posts, many=True, context={'request': request})
+
+            return paginator.get_paginated_response(serializer.data,  )
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class DraftsViewSet(viewsets.ModelViewSet):
@@ -98,28 +100,88 @@ class DraftsViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+
 class CategoryViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticatedOrReadOnly, ]
-    pagination_class = StandardResultsSetPagination
-    serializer_class = CategoryDetailSerializer
+    pagination_class = None
+    serializer_class = CategoryListSerializer
+
+    # def get_permissions(self):
+    #     if self.request.method == 'DELETE':
+    #         return [IsAdminUser()]  # Permission for DELETE method
+    #     elif self.request.method == 'POST':
+    #         return [IsAdminUser()]  # Permission for create method
+    #     else:
+    #         return [IsAuthenticated()]  # Default permission for other methods
 
     def get_queryset(self):
-        return Category.objects.all()
+        queryset = Category.objects.all()
+        return queryset
+
+    def retrieve(self, request, pk):
+        posts = Post.objects.select_related('category', 'author').filter(category=pk, status='published').order_by('photo_date')
+        paginator = StandardResultsSetPagination()
+        paginated_posts = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(paginated_posts, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data, )
+
+    def create(self, request):
+        get = lambda node_id: Category.objects.get(pk=node_id)
+        data = request.data
+        root = data['root']
+        name = data['name']
+        if not root:
+            Category.add_root(name=name)
+        else:
+            try:
+                cat_root = Category.objects.get(name=root)
+            except Category.DoesNotExist:
+                return JsonResponse({'message': f'Root category with name {root} not exist'}, status=400)
+            if cat_root:
+                get(cat_root.pk).add_child(name=name)
+
+        return JsonResponse({'message': f'Category {name} created'}, status=201)
 
 
-class TagListViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, ]
+class TagsViewSet(viewsets.ModelViewSet):
+    permission_classes = []
     pagination_class = StandardResultsSetPagination
     serializer_class = TagListSerializer
-
+    # def get_permissions(self):
+    #     if self.request.method == 'DELETE':
+    #         return [IsAdminUser()]  # Example permission for DELETE method
+    #     else:
+    #         return [IsAuthenticated()]  # Default permission for other methods
     def get_queryset(self):
         queryset = Tag.objects.all()
         return queryset
 
+    def retrieve(self, request, pk):
+        posts = Post.objects.select_related('category', 'author').filter(tags=pk, status='published').order_by('photo_date')
+        paginator = self.pagination_class()
+        paginated_posts = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(paginated_posts, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data, )
+
+    #  Create new tag
+    def create(self, request):
+        serializer = TagListSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        try:
+            tag = Tag.objects.get(pk=pk)
+        except Tag.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        tag.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class PostListViewSet(viewsets.ModelViewSet):
     # lookup_field = 'slug'
-    permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly]
+    # permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly]
+    permission_classes = []
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = PostFilter
@@ -138,12 +200,8 @@ class PostListViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         # return 3 last news for home page
-        if self.basename == 'home':
-            queryset = Post.objects.select_related('category',
-                                                   'author', ).filter(status='published').order_by('-created')[:9]
 
-        else:
-            queryset = Post.objects.select_related('category',
+        queryset = Post.objects.select_related('category',
                                                    'author').filter(status='published').order_by('photo_date')
 
         return queryset
@@ -200,26 +258,37 @@ class PostListViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
+    def create(self, request, *args, **kwargs):
+        message = 'Post created successfully.'
+        form = PostForm(request.POST, request.FILES)
+        post_id_returned = ''
 
-# categories/<uuid:category_id>/posts
-class PostViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
-    serializer_class = PostListSerializer
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
 
-    def get_queryset(self):
-        pk = self.kwargs.get('pk')
-        # KOSLTYLI
-        cat = str(self.request).split('/')[-4]
+            post.tags.set(request.POST.getlist('tags'))
 
-        # category list
-        if cat == 'categories':
-            queryset = Post.objects.filter(category_id=pk, status='published').order_by('photo_date')
-        # tags_list
-        elif cat == 'tags':
-            queryset = Post.objects.filter(tags=pk, status='published').order_by('photo_date')
+            for img in request.FILES.getlist('images'):
+                # image = Image.objects.create(post_id=post.id, image=img)
+                Image.objects.create(post_id=post.id, file=img)
+
+            for video in request.FILES.getlist('videos'):
+                # image = Image.objects.create(post_id=post.id, image=img)
+                Video.objects.create(post_id=post.id, file=video)
+
+            post_id_returned = post.id
+            stars = Stars.objects.create(post_id=post.id, user=post.author)
+            stars.save()
+
+
         else:
-            raise Exception("Wrong Tags or Category type.")
-        return queryset
+            message = form.errors.as_json(escape_html=True)
+        return JsonResponse({'message': message, 'post_id': post_id_returned}, safe=False)
+
+
+
 
 
 # TODO check if user, not author may delete media
@@ -263,28 +332,7 @@ class ImageView(APIView):
             return Response({'error': f'User {request.user} is not author of this media'}, status=status.HTTP_403_FORBIDDEN)
 
 
-    # def delete (self, request):
-    #     image_ids = request.data.get('image_ids', [])
-    #     if not image_ids:
-    #         return Response({"detail": "No image IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     deleted_count = 0
-    #     # for image_id in image_ids:
-    #     #     try:
-    #     #         image = Image.objects.get(pk=image_id)
-    #     #     except Image.DoesNotExist:
-    #     #         continue  # Skip if image doesn't exist
-    #     #
-    #     #     # Check if the user is authorized to delete the image
-    #     #     if not request.user.is_staff and image.post.author != request.user:
-    #     #         continue  # Skip if user is not authorized
-    #     #
-    #     #     image.delete()
-    #     #     deleted_count += 1
-    #
-    #     return Response({"detail": f"{deleted_count} images deleted successfully."},
-    #                     status=status.HTTP_204_NO_CONTENT)
-#
+
 class VideoView(APIView):
     permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly, ]
 
@@ -324,48 +372,6 @@ class VideoView(APIView):
 
 
 
-""" New post creation """
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def post_create(request):
-    message = 'Post created successfully.'
-    form = PostForm(request.POST, request.FILES)
-    post_id_returned = ''
-
-    if form.is_valid():
-        post = form.save(commit=False)
-        post.author = request.user
-        post.save()
-
-        post.tags.set(request.POST.getlist('tags'))
-
-        for img in request.FILES.getlist('images'):
-            # image = Image.objects.create(post_id=post.id, image=img)
-            Image.objects.create(post_id=post.id, file=img)
-
-        for video in request.FILES.getlist('videos'):
-            # image = Image.objects.create(post_id=post.id, image=img)
-            Video.objects.create(post_id=post.id, file=video)
-
-        post_id_returned = post.id
-        stars = Stars.objects.create(post_id=post.id, user=post.author)
-        stars.save()
-
-
-    else:
-        message = form.errors.as_json(escape_html=True)
-    return JsonResponse({'message': message, 'post_id': post_id_returned}, safe=False)
-
-
-""" Update post """
-
-# @api_view(['PUT'])
-# def post_update(request, pk):
-#     message = f'Post {pk} updated'
-#     return JsonResponse({'message': message})
-
 
 """ Set STAR to post. Only in PostDetail """
 
@@ -392,58 +398,4 @@ def set_star(request, pk, star):
         post.save(update_fields=['average_stars'])
 
     return JsonResponse({'post': pk, 'average_stars': post.average_stars}, safe=False)
-
-
-""" Delete post (only if user is Author)"""
-
-
-# TODO delete files created with ffmpeg
-# @api_view(['DELETE'])
-# def post_delete(request, pk):
-#     message = ''
-#     post = Post.objects.get(pk=pk)
-#     if post.author == request.user:
-#         post.delete()
-#         message = f'post {pk} deleted'
-#     else:
-#         raise PermissionDenied("You are not allowed to delete this post.")
-#     return JsonResponse({'message': message, 'post_id': pk})
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def tag_create(request, tag):
-    tag = Tag.objects.create(name=tag)
-    tag.save()
-    return JsonResponse({'message': f'Tag {tag.name} created'})
-
-
-# https://django-treebeard.readthedocs.io/en/latest/tutorial.html
-@api_view(['GET'])
-@permission_classes([IsAdminUser])
-def get_cats(request):
-    cats = Category.objects.all()
-    serializer = CategoryDetailSerializer(cats, many=True)
-    return Response(serializer.data)
-
-
-# create new categories
-@api_view(['POST'])
-@permission_classes([IsAdminUser])
-def create_category(request):
-    get = lambda node_id: Category.objects.get(pk=node_id)
-    data = request.data
-    root = data['root']
-    name = data['name']
-    if not root:
-        Category.add_root(name=name)
-    else:
-        try:
-            cat_root = Category.objects.get(name=root)
-        except Category.DoesNotExist:
-            return JsonResponse({'message': f'Root category with name {root} not exist'}, status=400)
-        if cat_root:
-            get(cat_root.pk).add_child(name=name)
-
-    return JsonResponse({'message': f'Category {name} created'}, status=201)
 

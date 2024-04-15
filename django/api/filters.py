@@ -7,7 +7,9 @@ from blog.models import Post
 class PostFilter(django_filters.FilterSet):
     # Define filter fields based on your model's attributes
     title = django_filters.CharFilter(field_name='title', lookup_expr='icontains')
+    author = django_filters.CharFilter(field_name='author__name', lookup_expr='icontains')
+    tag = django_filters.CharFilter(field_name='tags__name', lookup_expr='icontains')
 
     class Meta:
         model = Post
-        fields = ['title']  # Add more fields as needed
+        fields = ['title', 'author']  # Add more fields as needed

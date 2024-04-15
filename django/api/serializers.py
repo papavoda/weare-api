@@ -1,9 +1,5 @@
-from collections import OrderedDict
-from operator import itemgetter
 
 from rest_framework import serializers, request
-from rest_framework.fields import SerializerMethodField
-from rest_framework.reverse import reverse_lazy
 
 from blog.models import Post, Image, Video, Tag, Category, Stars
 from accounts.serializers import CustomUserSerializer
@@ -108,12 +104,12 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class CategoryListSerializer(serializers.ModelSerializer):
-    #posts = PostListSerializer(many=True, read_only=True)
+    posts = PostListSerializer(many=True, read_only=True)
 
     class Meta:
         model = Category
-        fields = ('id', 'name', )
-        # fields = '__all__'
+        # fields = ('id', 'name', 'posts')
+        fields = '__all__'
 
 
 class CategoryDetailSerializer(serializers.ModelSerializer):

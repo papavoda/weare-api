@@ -11,6 +11,7 @@ class CustomUserAdmin(admin.ModelAdmin):
     model = CustomUser
     list_display = [
         'email',
+        'id',
         'name',
         'is_active',
         'is_staff',
