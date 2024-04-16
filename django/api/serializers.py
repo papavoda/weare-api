@@ -1,3 +1,4 @@
+from typing import List, Dict, Any
 
 from rest_framework import serializers, request
 
@@ -42,7 +43,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
 
     # Ordering images by post.images_ordering
     images = serializers.SerializerMethodField('get_images')
-    def get_images(self, obj):
+    def get_images(self, obj)  -> List[Dict[str, Any]]:
         qset = Image.objects.filter(post_id=obj.pk).order_by(obj.images_ordering)
         # add context={'request': request} for get abs image url
         rqst = self.context.get('request')

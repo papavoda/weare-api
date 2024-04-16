@@ -1,11 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter, DefaultRouter
-from .views import PostListViewSet, TagsViewSet, set_star, DraftsViewSet, ImageView, VideoView, my_posts, LastNews, CategoryViewSet
+from .views import PostListViewSet, TagsViewSet, SetStar , DraftsViewSet, ImageView, VideoView, MyPosts, LastNews, CategoryViewSet
 
 
 urlpatterns = [
-    path('my-posts/', my_posts, name='my_posts'),
-    path('posts/<uuid:pk>/set-star/<int:star>/', set_star, name='set_star'),
+    path('my-posts/', MyPosts.as_view(), name='my_posts'),
+    path('posts/<uuid:pk>/set-star/', SetStar.as_view(), name='set_star'),
     path('images/<uuid:pk>/', ImageView.as_view(), name='image-view'),
     path('videos/<uuid:pk>/', VideoView.as_view(), name='video-view'),
     path('', LastNews.as_view(), name='last_news'  )

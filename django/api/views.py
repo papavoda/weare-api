@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAdminUser, IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.views import APIView
 
 from .permissions import IsAuthorOrReadOnly, IsPostAuthorOrAdminOrReadOnly
@@ -14,7 +15,7 @@ from django.db.models import Avg
 
 from .paginations import SmallResultsSetPagination, StandardResultsSetPagination
 
-from .serializers import (PostDetailSerializer, PostListSerializer, TagListSerializer, CategoryDetailSerializer,
+from .serializers import (PostDetailSerializer, PostListSerializer, TagListSerializer,
                           ImageSerializer, VideoSerializer, CategoryListSerializer)
 
 from blog.models import Post, Audio, Category, Tag, Stars, Image, Video
@@ -23,81 +24,21 @@ from django_filters.rest_framework import DjangoFilterBackend
 from blog.forms import PostForm
 
 """ return all user posts with paginations"""
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def my_posts(request):
-    try:
-        # Retrieve all posts
-        all_posts = Post.objects.filter(author_id=request.user.id)
-
-        # Paginate the queryset
-        paginator = StandardResultsSetPagination()
-        paginated_posts = paginator.paginate_queryset(all_posts, request)
-
-        # Serialize the paginated queryset
-        serializer = PostListSerializer(paginated_posts, many=True, context={'request': request})
-
-        return paginator.get_paginated_response(serializer.data, )
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 # home
-class LastNews(APIView):
-    permission_classes = []
+class LastNews(ListAPIView):
+    permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     serializer_class = PostListSerializer
 
-    def get(self, request):
-        try:
-            posts = Post.objects.select_related('category',
-                                               'author', ).filter(status='published').order_by('-created')
-            # Paginate the queryset
-            paginator = self.pagination_class()
-            paginated_posts = paginator.paginate_queryset(posts, request)
+    queryset = Post.objects.select_related('category',
+                                           'author', ).filter(status='published').order_by('-created')
 
-            # Serialize the paginated queryset with serializer_class = PostListSerializer
-            serializer = self.serializer_class(paginated_posts, many=True, context={'request': request})
-
-            return paginator.get_paginated_response(serializer.data,  )
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-class DraftsViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, ]
-    pagination_class = StandardResultsSetPagination
-    serializer_class = PostDetailSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        posts = Post.objects.select_related('category',
-                                            'author').filter(author_id=user, status='draft')
-        # posts = Post.objects.select_related('category',
-        #                                     'author').filter(author_id=user)
-
-        return posts
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        # Handle updating tags separately
-        tags_data = request.data.getlist('tags')  # Using getlist()!!!!!!
-        if tags_data is not None:
-            instance.tags.set(tags_data)
-
-        # images
-        images_data = request.FILES.getlist('images')
-        if images_data is not None:
-            for img in images_data:
-                Image.objects.create(post_id=instance.id, file=img)
-
-        return Response(serializer.data)
+# Child for LastNews
+class MyPosts(LastNews):
+    permission_classes = [IsPostAuthorOrAdminOrReadOnly, IsAuthenticated]
+    def get_queryset(self,):
+        queryset = Post.objects.filter(author_id=self.request.user.id)
+        return queryset
 
 
 
@@ -105,13 +46,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
     pagination_class = None
     serializer_class = CategoryListSerializer
 
-    # def get_permissions(self):
-    #     if self.request.method == 'DELETE':
-    #         return [IsAdminUser()]  # Permission for DELETE method
-    #     elif self.request.method == 'POST':
-    #         return [IsAdminUser()]  # Permission for create method
-    #     else:
-    #         return [IsAuthenticated()]  # Default permission for other methods
+    def get_permissions(self):
+        if self.request.method == 'DELETE':
+            return [IsAdminUser()]  # Permission for DELETE method
+        elif self.request.method == 'POST':
+            return [IsAdminUser()]  # Permission for create method
+        else:
+            return [IsAuthenticated()]  # Default permission for other methods
 
     def get_queryset(self):
         queryset = Category.objects.all()
@@ -143,14 +84,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class TagsViewSet(viewsets.ModelViewSet):
-    permission_classes = []
     pagination_class = StandardResultsSetPagination
     serializer_class = TagListSerializer
-    # def get_permissions(self):
-    #     if self.request.method == 'DELETE':
-    #         return [IsAdminUser()]  # Example permission for DELETE method
-    #     else:
-    #         return [IsAuthenticated()]  # Default permission for other methods
+    def get_permissions(self):
+        if self.request.method == 'DELETE':
+            return [IsAdminUser()]  # Example permission for DELETE method
+        else:
+            return [IsAuthenticated()]  # Default permission for other methods
     def get_queryset(self):
         queryset = Tag.objects.all()
         return queryset
@@ -170,18 +110,20 @@ class TagsViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def destroy(self, request, pk=None):
-        try:
-            tag = Tag.objects.get(pk=pk)
-        except Tag.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        tag.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # def destroy(self, request, pk=None):
+    #     try:
+    #         tag = Tag.objects.get(pk=pk)
+    #     except Tag.DoesNotExist:
+    #         return Response(status=status.HTTP_404_NOT_FOUND)
+    #     tag.delete()
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 
 class PostListViewSet(viewsets.ModelViewSet):
     # lookup_field = 'slug'
-    # permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly]
-    permission_classes = []
+    permission_classes = [IsPostAuthorOrAdminOrReadOnly]
+    # permission_classes = []
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = PostFilter
@@ -288,17 +230,22 @@ class PostListViewSet(viewsets.ModelViewSet):
         return JsonResponse({'message': message, 'post_id': post_id_returned}, safe=False)
 
 
+class DraftsViewSet(PostListViewSet):
+    queryset = Post.objects.none()
+    def get_queryset(self):
+            user = self.request.user
+            queryset = Post.objects.select_related('category',
+                                                'author').filter(author_id=user, status='draft')
+            return queryset
 
 
-
-# TODO check if user, not author may delete media
 class ImageView(APIView):
     permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly, ]
-
+    serializer_class = ImageSerializer
     def get(self, request, pk):
         try:
             image = Image.objects.get(pk=pk)
-            serializer = ImageSerializer(image)
+            serializer = self.serializer_class(image)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Image.DoesNotExist:
             return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -332,14 +279,13 @@ class ImageView(APIView):
             return Response({'error': f'User {request.user} is not author of this media'}, status=status.HTTP_403_FORBIDDEN)
 
 
-
 class VideoView(APIView):
     permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly, ]
-
+    serializer_class = VideoSerializer
     def get(self, request, pk):
         try:
             video = Video.objects.get(pk=pk)
-            serializer = VideoSerializer(video)
+            serializer = self.serializer_class(video)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Video.DoesNotExist:
             return Response({'error': 'Video not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -371,31 +317,32 @@ class VideoView(APIView):
                             status=status.HTTP_403_FORBIDDEN)
 
 
-
-
 """ Set STAR to post. Only in PostDetail """
+class SetStar(GenericAPIView):
+    permission_classes = [IsAuthenticated ]
+    serializer_class = PostDetailSerializer
+    def post(self, request, pk,):
+        post = Post.objects.get(pk=pk)
+        user = request.user
+        post_id = pk
+        star = int(request.data.get('star'))
+        if 0 < star < 6:
+            stars = Stars.objects.select_related('post', 'user').filter(post_id=post_id, user=user)
+            if stars:
+                # Update if exist
+                Stars.objects.filter(post_id=post_id, user=user).update(post_id=post_id, user=user,
+                                                                                stars=star)
+                # stars.update()
+            else:
+                # create if not
+                stars = Stars.objects.create(post_id=post_id, user=user, stars=star)
+                stars.save()
 
+            average_stars = post.stars.aggregate(Avg('stars'))['stars__avg']
+            # Update the average_stars field of the associated Post
+            post.average_stars = average_stars
+            post.save(update_fields=['average_stars'])
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def set_star(request, pk, star):
-    post = Post.objects.get(pk=pk)
-    if 0 < star < 6:
-        stars = Stars.objects.select_related('post', 'user').filter(post_id=post.id, user=request.user)
-        if stars:
-            # Update if exist
-            Stars.objects.filter(post_id=post.id, user=request.user).update(post_id=post.id, user=request.user,
-                                                                            stars=star)
-            # stars.update()
-        else:
-            # create if not
-            stars = Stars.objects.create(post_id=post.id, user=request.user, stars=star)
-            stars.save()
-
-        average_stars = post.stars.aggregate(Avg('stars'))['stars__avg']
-        # Update the average_stars field of the associated Post
-        post.average_stars = average_stars
-        post.save(update_fields=['average_stars'])
-
-    return JsonResponse({'post': pk, 'average_stars': post.average_stars}, safe=False)
-
+        serializer = self.serializer_class(post,)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # return JsonResponse({'post': pk, 'average_stars': post.average_stars}, safe=False)
