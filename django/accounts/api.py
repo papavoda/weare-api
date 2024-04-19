@@ -19,24 +19,8 @@ from .models import CustomUser
 from .serializers import CustomUserSerializer, UserSerializer, PasswordResetSerializer, PasswordResetConfirmSerializer
 
 
-class MeAPI(APIView):
-    permission_classes = [IsAuthenticated, ]
-    serializer_class = CustomUserSerializer
-    def get(self, request):
-        user = request.user
-        serializer = self.serializer_class(user, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def patch(self, request, *args, **kwargs):
-        user = request.user  # Assuming user is authenticated
-        serializer = self.serializer_class(user, data=request.data, context={'request': request}, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class SignUp(GenericAPIView):
-    authentication_classes =[]
+    authentication_classes = []
     permission_classes = []
     serializer_class = UserSerializer
 
@@ -76,19 +60,26 @@ class SignUp(GenericAPIView):
                 # print(message)
                 return JsonResponse({'message': message}, status=400)
 
-class ToggleSimpleGallery(GenericAPIView):
-    permission_classes = [IsAuthenticated, ]
-    serializer_class = UserSerializer
-    def post(self, request):
-        user = request.user
-        is_simple_gallery = request.GET.get('is-simple-gallery', '')
-        if is_simple_gallery == 'true':
-            user.is_simple_gallery = True
-        elif is_simple_gallery == 'false':
-            user.is_simple_gallery = False
-        user.save()
 
-        return JsonResponse({'isSimpleGallery': user.is_simple_gallery})
+class ActivateEmailAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = UserSerializer
+
+    def post(self, request):
+        # Extract data from the POST request
+        uid = request.data['uid']
+        email = request.data['email']
+
+        if email and uid:
+            user = CustomUser.objects.get(id=uid, email=email)
+            user.is_active = True
+            user.save()
+
+            return Response('The user is now activated. You can go ahead and log in!')
+        else:
+            return Response('The parameters is not valid!', status=status.HTTP_400_BAD_REQUEST)
+
 
 class EmailVerificationView(APIView):
     # serializer_class = ''
@@ -149,21 +140,41 @@ class PasswordResetConfirmView(GenericAPIView):
         return Response({'detail': 'Invalid or expired reset link'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class MeAPI(APIView):
+    permission_classes = [IsAuthenticated, ]
+    serializer_class = CustomUserSerializer
 
-class ActivateEmailAPIView(APIView):
-    authentication_classes = []
-    permission_classes = []
+    def get(self, request):
+        user = request.user
+        serializer = self.serializer_class(user, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, *args, **kwargs):
+        user = request.user  # Assuming user is authenticated
+        serializer = self.serializer_class(user, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ToggleSimpleGallery(GenericAPIView):
+    permission_classes = [IsAuthenticated, ]
     serializer_class = UserSerializer
+
     def post(self, request):
-        # Extract data from the POST request
-        uid = request.data['uid']
-        email = request.data['email']
+        user = request.user
+        is_simple_gallery = request.GET.get('is-simple-gallery', '')
+        if is_simple_gallery == 'true':
+            user.is_simple_gallery = True
+        elif is_simple_gallery == 'false':
+            user.is_simple_gallery = False
+        user.save()
 
-        if email and uid:
-            user = CustomUser.objects.get(id=uid, email=email)
-            user.is_active = True
-            user.save()
+        return JsonResponse({'isSimpleGallery': user.is_simple_gallery})
 
-            return Response('The user is now activated. You can go ahead and log in!')
-        else:
-            return Response('The parameters is not valid!', status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+

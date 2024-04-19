@@ -1,7 +1,8 @@
 import os
 import shutil
 from django.http import JsonResponse
-
+from django.http.response import HttpResponse
+from urllib.parse import quote
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -149,6 +150,7 @@ class PostListViewSet(viewsets.ModelViewSet):
         return queryset
 
     def retrieve(self, request, *args, **kwargs):
+        print('****** USER IN POSTS *********', request.user)
         obj = self.get_object()
         # increase post.views by 1
         obj.views = obj.views + 1
@@ -346,3 +348,5 @@ class SetStar(GenericAPIView):
         serializer = self.serializer_class(post,)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
         # return JsonResponse({'post': pk, 'average_stars': post.average_stars}, safe=False)
+
+

@@ -9,6 +9,7 @@ services:
     user: 1000:1000
     # command: python -m uvicorn config.asgi:application --reload --host web --port 8000
     command: python manage.py runserver 0.0.0.0:8000
+    # command: gunicorn config.wsgi:application --workers 4 --bind 0.0.0.0:8000 --log-level DEBUG
     env_file:
       - ./django/.env
     ports:

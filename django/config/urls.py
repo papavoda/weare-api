@@ -1,6 +1,6 @@
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from config import settings
 from rest_framework_simplejwt.views import (
@@ -8,8 +8,10 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView, )
 from rest_framework_simplejwt.views import TokenVerifyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from blog.views import protected_media
 
 urlpatterns = [
+    # re_path(r'^media/(?P<path>.*)', protected_media, name="protected_media"),
     path('api/v1/users/', include('accounts.urls')),
     path('guliguli/', admin.site.urls),
     path('api/v1/', include('api.urls')),
