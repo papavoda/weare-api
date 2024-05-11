@@ -13,9 +13,11 @@ services:
     container_name: weare_prod
     env_file:
       - ./django/.env.prod
+    command: gunicorn config.wsgi:application --workers 4 --bind 0.0.0.0:8000 --log-level debug
     volumes:
       - ./django:/code
       - ./django/cache:/code/cache:rw
+      - ${MEDIA_VOLUME}:/code/media:rw
     depends_on:
       - db
 

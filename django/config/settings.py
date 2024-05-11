@@ -21,7 +21,7 @@ SECRET_KEY = env.str('SECRET_KEY')
 DEBUG = env.bool('DEBUG', default=False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
-CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=True)
+CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=False)
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", )
@@ -157,16 +157,19 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
-
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]  # work in localserver
+#STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]  # work in localserver
 
-# STATIC_ROOT = os.path.join(BASE_DIR, "static")  # work with gunicorn
+STATIC_ROOT = os.path.join(BASE_DIR, "static")  # work with gunicorn
 # for gunicorn
-# MEDIA_URL = 'http://localhost:8008/media/'
+#MEDIA_URL = 'http://prosphero.lan/media/'
+
+MEDIA_URL = 'http://prosphero.lan/api/v1/media/'
 # for dev
-MEDIA_URL = 'media/'
+#MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+#MEDIA_ROOT = '/home/ftp/data2/weare/media/'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -197,9 +200,9 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 6,
 
     # For return only JSON
-    # 'DEFAULT_RENDERER_CLASSES': [
-    #     'rest_framework.renderers.JSONRenderer',
-    # ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
     # 'DEFAULT_PARSER_CLASSES': (
     #     'rest_framework.parsers.JSONParser',
     #     'rest_framework.parsers.FormParser',

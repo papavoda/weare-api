@@ -6,12 +6,15 @@ from config import settings
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView, )
 from rest_framework_simplejwt.views import TokenVerifyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-from blog.views import protected_media, ProtectedMedia
+from blog.views import  protected_media
+from django.views.generic import RedirectView
+
+
 
 urlpatterns = [
-    # re_path(r'^media/(?P<path>.*)', protected_media, name="protected_media"),
     # protected media files
-    re_path(r'^media/(?P<path>.*)', ProtectedMedia.as_view(), name="pro_media"),
+#    re_path(r'^media/(?P<path>.*)', protected_media, name="protected_media"),
+    re_path(r'^api/v1/media/(?P<path>.*)', protected_media, name="protected_media"),
 
     # jwt signup, login
     path('api/v1/users/', include('accounts.urls')),

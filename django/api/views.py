@@ -44,6 +44,7 @@ class MyPosts(LastNews):
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     pagination_class = None
     serializer_class = CategoryListSerializer
 
@@ -85,6 +86,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class TagsViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     serializer_class = TagListSerializer
     def get_permissions(self):
@@ -123,8 +125,7 @@ class TagsViewSet(viewsets.ModelViewSet):
 
 class PostListViewSet(viewsets.ModelViewSet):
     # lookup_field = 'slug'
-    permission_classes = [IsPostAuthorOrAdminOrReadOnly]
-    # permission_classes = []
+    permission_classes = [IsPostAuthorOrAdminOrReadOnly, IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = PostFilter
@@ -150,7 +151,7 @@ class PostListViewSet(viewsets.ModelViewSet):
         return queryset
 
     def retrieve(self, request, *args, **kwargs):
-        print('****** USER IN POSTS *********', request.user)
+#        print('****** USER IN POSTS *********', request.user)
         obj = self.get_object()
         # increase post.views by 1
         obj.views = obj.views + 1
@@ -233,6 +234,7 @@ class PostListViewSet(viewsets.ModelViewSet):
 
 
 class DraftsViewSet(PostListViewSet):
+    permission_classes = [IsAuthenticated, IsPostAuthorOrAdminOrReadOnly, ]
     queryset = Post.objects.none()
     def get_queryset(self):
             user = self.request.user
